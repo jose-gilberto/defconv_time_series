@@ -1,6 +1,8 @@
 import sys
 sys.path.append('/home/gbarbosa/Projects/defconvts')
 from src.models import DeformableFCN
+import warnings
+warnings.filterwarnings('ignore')
 from src.utils import load_data, to_torch_dataset, to_torch_loader
 from lightning.pytorch import seed_everything
 from lightning.pytorch import Trainer
@@ -13,7 +15,7 @@ seed_everything(42, workers=True)
 
 DATASETS = [
     # 'Adiac',
-    # 'ArrowHead',
+    'ArrowHead',
     'Beef',
     'BeetleFly',
     'BirdChicken',
@@ -180,20 +182,17 @@ for dataset in DATASETS:
         trainer = Trainer(
             max_epochs=NUMBER_OF_EPOCHS,
             accelerator='gpu',
-            devices=-1,
             callbacks=[checkpoint]
         )
         
         trainer.fit(model, train_dataloaders=train_loader)
-        results = trainer.test(model, test_loader)
+        results = trainer.test(dataloaders=test_loader, ckpt_path='best')
         
         results_data_dir['dataset'].append(dataset)
         results_data_dir['model'].append('deffcn')
         results_data_dir['exp'].append(experiment_number)
         results_data_dir['acc'].append(results[0]['acc'])
         results_data_dir['f1'].append(results[0]['f1'])
-        
-    break
 
-results_df = pd.DataFrame(results_data_dir)
-results_df.to_csv(f'{RESULTS_DIR}deffcn.csv', index=False)
+        results_df = pd.DataFrame(results_data_dir)
+        results_df.to_csv(f'{RESULTS_DIR}deffcn.csv', index=False)

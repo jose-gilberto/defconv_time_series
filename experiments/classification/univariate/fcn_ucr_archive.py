@@ -14,8 +14,8 @@ seed_everything(42, workers=True)
 DATASETS = [
     # 'Adiac',
     # 'ArrowHead',
-    'Beef',
-    # 'BeetleFly',
+    # 'Beef',
+    'BeetleFly',
     'BirdChicken',
     'Car',
     'CBF',
@@ -185,7 +185,10 @@ for dataset in DATASETS:
         )
         
         trainer.fit(model, train_dataloaders=train_loader)
-        results = trainer.test(model, test_loader)
+        
+        # print(model(next(iter(train_loader))[0]))
+        
+        results = trainer.test(dataloaders=test_loader, ckpt_path='best')
         
         results_data_dir['dataset'].append(dataset)
         results_data_dir['model'].append('fcn')
