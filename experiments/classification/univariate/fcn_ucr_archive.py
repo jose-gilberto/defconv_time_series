@@ -6,6 +6,7 @@ from lightning.pytorch import seed_everything
 from lightning.pytorch import Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint
 import numpy as np
+import time
 import pandas as pd
 
 # Ensure reproducibility
@@ -15,7 +16,7 @@ DATASETS = [
     'ArrowHead',
     'BeetleFly',
     'Car',
-    # 'Earthquakes',
+    'Earthquakes',
     'FaceAll',
     'FordB',
     'Ham',
@@ -33,7 +34,6 @@ DATASETS = [
     'EOGVerticalSignal',
     'FreezerSmallTrain',
     'GunPointOldVersusYoung',
-    'MelbournePedestrian',
 ]
 
 RESULTS_DIR = '../../../results/'
@@ -47,14 +47,16 @@ results_data_dir = {
     'dataset': [],
     'exp': [],
     'acc': [],
-    'f1': []
+    'f1': [],
+    'recall': [],
+    'precision': [],
+    'time': []
 }
 
 for dataset in DATASETS:
-
     print(f'Loading dataset {dataset}...')
     X_train, y_train, X_test, y_test = load_data(name=dataset, task='classification', split='full')
-    
+
     print('Converting the dataset to torch.DataLoader...')
     train_set, test_set = to_torch_dataset(X_train, y_train, X_test, y_test)
     train_loader, test_loader = to_torch_loader(train_dataset=train_set, test_dataset=test_set)
@@ -71,24 +73,28 @@ for dataset in DATASETS:
             save_top_k=1,
             auto_insert_metric_name=False
         )
+
         trainer = Trainer(
             max_epochs=NUMBER_OF_EPOCHS,
             accelerator='gpu',
             devices=-1,
             callbacks=[checkpoint]
         )
-        
+
+        start_time = time.time()
         trainer.fit(model, train_dataloaders=train_loader)
-        
-        # print(model(next(iter(train_loader))[0]))
-        
+        end_time = time.time()
+
         results = trainer.test(dataloaders=test_loader, ckpt_path='best')
-        
+
         results_data_dir['dataset'].append(dataset)
         results_data_dir['model'].append('fcn')
         results_data_dir['exp'].append(experiment_number)
         results_data_dir['acc'].append(results[0]['acc'])
         results_data_dir['f1'].append(results[0]['f1'])
-        
+        results_data_dir['recall'].append(results[0]['recall'])
+        results_data_dir['precision'].append(results[0]['precision'])
+        results_data_dir['time'].append(end_time - start_time)
+
         results_df = pd.DataFrame(results_data_dir)
         results_df.to_csv(f'{RESULTS_DIR}fcn.csv', index=False)

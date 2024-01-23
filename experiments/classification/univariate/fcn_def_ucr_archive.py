@@ -35,14 +35,13 @@ DATASETS = [
     'EOGVerticalSignal',
     'FreezerSmallTrain',
     'GunPointOldVersusYoung',
-    'MelbournePedestrian',
 ]
 
 RESULTS_DIR = '../../../results/'
 MODELS_DIR = '../../../models/classification/univariate/'
 
 NUMBER_OF_EXPERIMENTS = 1
-NUMBER_OF_EPOCHS = 2000
+NUMBER_OF_EPOCHS = 1000
 
 results_data_dir = {
     'model': [],
