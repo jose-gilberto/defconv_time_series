@@ -1,2 +1,2 @@
-model,dataset,exp,acc,f1
-deffcn,Beef,0,0.5333333611488342,0.5085926055908203
+model,dataset,exp,acc,f1,recall,precision,time
+

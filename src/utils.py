@@ -20,9 +20,14 @@ def load_data(
         if split == "train" or split == "full":
             X_train, y_train = load_classification(name=name, split="TRAIN", return_metadata=False)
             y_train = y_train.astype(int)
+            
             classes = np.unique(y_train)
-            if classes[0] > 0:
-                y_train -= 1
+            
+            #TODO: fix with a dictionary based mapping
+            
+            for i in range(len(y_train)):
+                y_train[i] = np.where(classes == y_train[i])[0][0]
+
             datasets.append(X_train)
             datasets.append(y_train.astype(int))
             
@@ -30,8 +35,11 @@ def load_data(
             X_test, y_test = load_classification(name=name, split="TEST", return_metadata=False)
             y_test = y_test.astype(int)
             classes = np.unique(y_test)
-            if classes[0] > 0:
-                y_test -= 1
+            
+            #TODO: fix with a dictionary based mapping
+            for i in range(len(y_test)):
+                y_test[i] = np.where(classes == y_test[i])[0][0]
+            
             datasets.append(X_test)
             datasets.append(y_test.astype(int))
 
@@ -76,7 +84,7 @@ def to_torch_loader(
     )
     
     test_loader = DataLoader(
-        test_dataset, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last
+        test_dataset, batch_size=batch_size, shuffle=False, drop_last=drop_last
     )
     
     return train_loader, test_loader
