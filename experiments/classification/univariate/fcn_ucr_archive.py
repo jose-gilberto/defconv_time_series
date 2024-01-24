@@ -1,10 +1,13 @@
 import sys
 sys.path.append('/home/gbarbosa/Projects/defconvts')
+import warnings
+warnings.filterwarnings('ignore')
 from src.models import FCN
 from src.utils import load_data, to_torch_dataset, to_torch_loader
 from lightning.pytorch import seed_everything
 from lightning.pytorch import Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint
+from lightning.pytorch.loggers import CSVLogger
 import numpy as np
 import time
 import pandas as pd
@@ -13,33 +16,33 @@ import pandas as pd
 seed_everything(42, workers=True)
 
 DATASETS = [
-    'ArrowHead',
+    # 'ArrowHead',
     'BeetleFly',
     'Car',
-    'Earthquakes',
-    'FaceAll',
-    'FordB',
-    'Ham',
-    'InlineSkate',
-    'InsectWingbeatSound',
-    'Lightning7',
-    'MoteStrain',
-    'NonInvasiveFetalECGThorax2',
-    'OliveOil',
-    'ProximalPhalanxTW',
-    'TwoPatterns',
-    'Wine',
-    'WordSynonyms',
-    'Yoga',
-    'EOGVerticalSignal',
-    'FreezerSmallTrain',
-    'GunPointOldVersusYoung',
+    # 'Earthquakes',
+    # 'FaceAll',
+    # 'FordB',
+    # 'Ham',
+    # 'InlineSkate',
+    # 'InsectWingbeatSound',
+    # 'Lightning7',
+    # 'MoteStrain',
+    # 'NonInvasiveFetalECGThorax2',
+    # 'OliveOil',
+    # 'ProximalPhalanxTW',
+    # 'TwoPatterns',
+    # 'Wine',
+    # 'WordSynonyms',
+    # 'Yoga',
+    # 'EOGVerticalSignal',
+    # 'FreezerSmallTrain',
+    # 'GunPointOldVersusYoung',
 ]
 
 RESULTS_DIR = '../../../results/'
 MODELS_DIR = '../../../models/classification/univariate/'
 
-NUMBER_OF_EXPERIMENTS = 1
+NUMBER_OF_EXPERIMENTS = 5
 NUMBER_OF_EPOCHS = 1000
 
 results_data_dir = {
@@ -74,15 +77,17 @@ for dataset in DATASETS:
             auto_insert_metric_name=False
         )
 
+        logger = CSVLogger('../../../logs/classification', name=f'fcn_ucr_subset_{dataset}')
+
         trainer = Trainer(
             max_epochs=NUMBER_OF_EPOCHS,
             accelerator='gpu',
-            devices=-1,
-            callbacks=[checkpoint]
+            callbacks=[checkpoint],
+            logger=logger
         )
 
         start_time = time.time()
-        trainer.fit(model, train_dataloaders=train_loader)
+        trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=test_loader)
         end_time = time.time()
 
         results = trainer.test(dataloaders=test_loader, ckpt_path='best')
