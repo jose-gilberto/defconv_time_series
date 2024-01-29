@@ -21,11 +21,11 @@ seed_everything(42, workers=True)
 
 DATASETS = [
     # 'ArrowHead',
-    'BeetleFly',
-    'Car',
-    # 'Earthquakes',
-    # 'FaceAll',
-    # 'FordB',
+    # 'BeetleFly',
+    # 'Car',
+    'Earthquakes',
+    'FaceAll',
+    'FordB',
     # 'Ham',
     # 'InlineSkate',
     # 'InsectWingbeatSound',
