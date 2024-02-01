@@ -23,14 +23,14 @@ DATASETS = [
     # 'ArrowHead',
     # 'BeetleFly',
     # 'Car',
-    'Earthquakes',
-    'FaceAll',
-    'FordB',
+    # 'Earthquakes',
+    # 'FaceAll',
+    # 'FordB',
     # 'Ham',
     # 'InlineSkate',
     # 'InsectWingbeatSound',
     # 'Lightning7',
-    # 'MoteStrain',
+    'MoteStrain',
     # 'NonInvasiveFetalECGThorax2',
     # 'OliveOil',
     # 'ProximalPhalanxTW',
@@ -46,7 +46,7 @@ DATASETS = [
 RESULTS_DIR = '../../../results/'
 MODELS_DIR = '../../../models/classification/univariate/'
 
-NUMBER_OF_EXPERIMENTS = 5
+NUMBER_OF_EXPERIMENTS = 4
 NUMBER_OF_EPOCHS = 1000
 
 results_data_dir = {
