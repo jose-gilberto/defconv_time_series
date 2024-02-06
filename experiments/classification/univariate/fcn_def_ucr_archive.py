@@ -30,13 +30,13 @@ DATASETS = [
     # 'InlineSkate',
     # 'InsectWingbeatSound',
     # 'Lightning7',
-    'MoteStrain',
+    # 'MoteStrain',
     # 'NonInvasiveFetalECGThorax2',
     # 'OliveOil',
     # 'ProximalPhalanxTW',
     # 'TwoPatterns',
     # 'Wine',
-    # 'WordSynonyms',
+    'WordSynonyms',
     # 'Yoga',
     # 'EOGVerticalSignal',
     # 'FreezerSmallTrain',
@@ -46,7 +46,7 @@ DATASETS = [
 RESULTS_DIR = '../../../results/'
 MODELS_DIR = '../../../models/classification/univariate/'
 
-NUMBER_OF_EXPERIMENTS = 4
+NUMBER_OF_EXPERIMENTS = 1
 NUMBER_OF_EPOCHS = 1000
 
 results_data_dir = {
@@ -92,7 +92,7 @@ for dataset in DATASETS:
         )
         
         start_time = time.time()
-        trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=test_loader)
+        trainer.fit(model, train_dataloaders=train_loader)
         end_time = time.time()
 
         results = trainer.test(dataloaders=test_loader, ckpt_path='best')

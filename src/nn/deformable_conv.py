@@ -284,8 +284,8 @@ class PackedDeformableConvolution1d(DeformableConvolution1d):
         torch.nn.init.constant_(self.offset_pconv.weight, 0.)
 
         if bias:
-            torch.nn.init.constant_(self.offset_dconv.bias, 1.)
-            torch.nn.init.constant_(self.offset_pconv.bias, 1.)
+            torch.nn.init.constant_(self.offset_dconv.bias, 0.)
+            torch.nn.init.constant_(self.offset_pconv.bias, 0.)
 
         self.offset_dconv.register_backward_hook(self._set_lr)
         self.offset_pconv.register_backward_hook(self._set_lr)

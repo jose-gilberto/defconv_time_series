@@ -25,14 +25,14 @@ DATASETS = [
     # 'Ham',
     # 'InlineSkate',
     # 'InsectWingbeatSound',
-    'Lightning7',
-    'MoteStrain',
+    # 'Lightning7',
+    # 'MoteStrain',
     # 'NonInvasiveFetalECGThorax2',
     # 'OliveOil',
     # 'ProximalPhalanxTW',
     # 'TwoPatterns',
     # 'Wine',
-    # 'WordSynonyms',
+    'WordSynonyms',
     # 'Yoga',
     # 'EOGVerticalSignal',
     # 'FreezerSmallTrain',
@@ -87,7 +87,7 @@ for dataset in DATASETS:
         )
 
         start_time = time.time()
-        trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=test_loader)
+        trainer.fit(model, train_dataloaders=train_loader)
         end_time = time.time()
 
         results = trainer.test(dataloaders=test_loader, ckpt_path='best')

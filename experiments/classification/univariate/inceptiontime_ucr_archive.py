@@ -23,7 +23,7 @@ DATASETS = [
     # 'Earthquakes',
     # 'FaceAll',
     # 'FordB',
-    'Ham',
+    # 'Ham',
     # 'InlineSkate',
     # 'InsectWingbeatSound',
     # 'Lightning7',
@@ -36,7 +36,7 @@ DATASETS = [
     # 'WordSynonyms',
     # 'Yoga',
     # 'EOGVerticalSignal',
-    # 'FreezerSmallTrain',
+    'FreezerSmallTrain',
     # 'GunPointOldVersusYoung',
 ]
 
@@ -92,7 +92,7 @@ for dataset in DATASETS:
             )
 
             start_time = time.time()
-            trainer.fit(inception, train_dataloaders=train_loader, val_dataloaders=test_loader)
+            trainer.fit(inception, train_dataloaders=train_loader)
             end_time = time.time()
             
             inception_training_time += (end_time - start_time)
