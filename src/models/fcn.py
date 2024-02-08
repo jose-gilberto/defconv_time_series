@@ -26,10 +26,10 @@ class DeformableFCN(LightningModule):
             nn.ReLU(),
 
             PackedDeformableConvolution1d(
-                in_channels=256, out_channels=256, kernel_size=5, padding='same', stride=1, bias=True
+                in_channels=256, out_channels=128, kernel_size=5, padding='same', stride=1, bias=True
             ),
 
-            nn.Conv1d(in_channels=256, out_channels=128, kernel_size=3, padding='same'),
+            nn.Conv1d(in_channels=128, out_channels=128, kernel_size=3, padding='same'),
             nn.BatchNorm1d(num_features=128),
             nn.ReLU(),
         ])
@@ -39,7 +39,7 @@ class DeformableFCN(LightningModule):
         self.criteria = nn.CrossEntropyLoss() if num_classes > 2 else nn.BCEWithLogitsLoss()
 
     def configure_optimizers(self) -> any:
-        optimizer = torch.optim.Adam(self.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-8)
+        optimizer = torch.optim.Adam(self.parameters())
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, mode='min', factor=0.5, patience=50, min_lr=1e-4
         )

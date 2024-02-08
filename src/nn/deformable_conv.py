@@ -262,7 +262,7 @@ class PackedDeformableConvolution1d(DeformableConvolution1d):
         # self.offset_dconv_norm = GlobalLayerNormalization(
         #     in_channels
         # )
-        self.offset_dconv_prelu = LeakySineLU()
+        self.offset_dconv_prelu = nn.PReLU()
         
         
         self.offset_pconv = nn.Conv1d(
@@ -275,17 +275,17 @@ class PackedDeformableConvolution1d(DeformableConvolution1d):
         # self.offset_pconv_norm = GlobalLayerNormalization(
         #     kernel_size * offset_groups
         # )
-        self.offset_pconv_prelu = LeakySineLU()
+        self.offset_pconv_prelu = nn.PReLU()
 
         self.device = device
         self.to(device)
 
-        torch.nn.init.constant_(self.offset_dconv.weight, 0.)
-        torch.nn.init.constant_(self.offset_pconv.weight, 0.)
+        # torch.nn.init.constant_(self.offset_dconv.weight, 0.)
+        # torch.nn.init.constant_(self.offset_pconv.weight, 0.)
 
-        if bias:
-            torch.nn.init.constant_(self.offset_dconv.bias, 0.)
-            torch.nn.init.constant_(self.offset_pconv.bias, 0.)
+        # if bias:
+        #     torch.nn.init.constant_(self.offset_dconv.bias, 0.)
+        #     torch.nn.init.constant_(self.offset_pconv.bias, 0.)
 
         self.offset_dconv.register_backward_hook(self._set_lr)
         self.offset_pconv.register_backward_hook(self._set_lr)
@@ -298,6 +298,8 @@ class PackedDeformableConvolution1d(DeformableConvolution1d):
     def forward(self, x: torch.Tensor, with_offsets: bool = False) -> torch.Tensor:
         offsets = self.offset_dconv(x)
         offsets = self.offset_dconv_prelu(offsets)
+        # offsets = self.offset_dconv_norm(offsets.moveaxis(1,2)).moveaxis(2,1)
+
 
         self.device = x.device
 
@@ -306,6 +308,8 @@ class PackedDeformableConvolution1d(DeformableConvolution1d):
 
         offsets = self.offset_pconv(x)
         offsets = self.offset_pconv_prelu(offsets)
+        # offsets = self.offset_pconv_norm(offsets.moveaxis(1,2)).moveaxis(2,1)
+
         offsets = offsets.unsqueeze(0).chunk(self.offset_groups, dim=2)
         offsets = torch.vstack(offsets).moveaxis((0, 2), (1, 3))
 

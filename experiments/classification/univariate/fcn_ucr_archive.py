@@ -32,11 +32,11 @@ DATASETS = [
     # 'ProximalPhalanxTW',
     # 'TwoPatterns',
     # 'Wine',
-    'WordSynonyms',
+    # 'WordSynonyms',
     # 'Yoga',
     # 'EOGVerticalSignal',
     # 'FreezerSmallTrain',
-    # 'GunPointOldVersusYoung',
+    'GunPointOldVersusYoung',
 ]
 
 RESULTS_DIR = '../../../results/'
