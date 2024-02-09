@@ -40,12 +40,12 @@ class DeformableFCN(LightningModule):
 
     def configure_optimizers(self) -> any:
         optimizer = torch.optim.Adam(self.parameters())
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode='min', factor=0.5, patience=50, min_lr=1e-4
-        )
+        # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        #     optimizer, mode='min', factor=0.5, patience=50, min_lr=1e-4
+        # )
         return {
             'optimizer': optimizer,
-            'lr_scheduler': scheduler,
+            # 'lr_scheduler': scheduler,
             'monitor': 'train_loss'
         }
 

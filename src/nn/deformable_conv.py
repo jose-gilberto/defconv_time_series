@@ -291,9 +291,10 @@ class PackedDeformableConvolution1d(DeformableConvolution1d):
         self.offset_pconv.register_backward_hook(self._set_lr)
 
     @staticmethod
-    def _set_lr(module, grad_input, grad_output):
-        grad_input = (grad_input[i] * 0.1 for i in range(len(grad_input)))
-        grad_output = (grad_output[i] * 0.1 for i in range(len(grad_output)))    
+    def _set_lr(module, grad_input: torch.Tensor, grad_output):
+        grad_input = (F.dropout(grad_input[i], p=0.2) * 0.1 for i in range(len(grad_input)))
+        grad_output = (F.dropout(grad_output[i],p=0.2) * 0.1 for i in range(len(grad_output)))
+        
     
     def forward(self, x: torch.Tensor, with_offsets: bool = False) -> torch.Tensor:
         offsets = self.offset_dconv(x)

@@ -31,12 +31,12 @@ DATASETS = [
     # 'NonInvasiveFetalECGThorax2',
     # 'OliveOil',
     # 'ProximalPhalanxTW',
-    # 'TwoPatterns',
+    'TwoPatterns',
     # 'Wine',
     # 'WordSynonyms',
     # 'Yoga',
     # 'EOGVerticalSignal',
-    'FreezerSmallTrain',
+    # 'FreezerSmallTrain',
     # 'GunPointOldVersusYoung',
 ]
 
