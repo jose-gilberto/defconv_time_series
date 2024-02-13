@@ -1,52 +1,49 @@
 import sys
 sys.path.append('/home/gbarbosa/Projects/defconvts')
-
-from src.models import DeformableFCN
-from src.utils import load_data, to_torch_dataset, to_torch_loader
-
 import warnings
 warnings.filterwarnings('ignore')
-
+from src.models import LITE
+from src.utils import load_data, to_torch_dataset, to_torch_loader
+import torch
 from lightning.pytorch import seed_everything
 from lightning.pytorch import Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.loggers import CSVLogger
-
 import numpy as np
-import pandas as pd
 import time
+import pandas as pd
 
 # Ensure reproducibility
 seed_everything(42, workers=True)
 
 DATASETS = [
-    # 'ArrowHead',
-    # 'BeetleFly',
-    # 'Car',
-    # 'Earthquakes',
-    # 'FaceAll',
-    # 'FordB',
+    'ArrowHead',
+    'BeetleFly',
+    'Car',
+    'Earthquakes',
+    'FaceAll',
+    'FordB',
     'Ham',
-    # 'InlineSkate',
-    # 'InsectWingbeatSound',
-    # 'Lightning7',
-    # 'MoteStrain',
-    # 'NonInvasiveFetalECGThorax2',
-    # 'OliveOil',
-    # 'ProximalPhalanxTW',
-    # 'TwoPatterns',
-    # 'Wine',
-    # 'WordSynonyms',
-    # 'Yoga',
-    # 'EOGVerticalSignal',
-    # 'FreezerSmallTrain',
-    # 'GunPointOldVersusYoung',
+    'InlineSkate',
+    'InsectWingbeatSound',
+    'Lightning7',
+    'MoteStrain',
+    'NonInvasiveFetalECGThorax2',
+    'OliveOil',
+    'ProximalPhalanxTW',
+    'TwoPatterns',
+    'Wine',
+    'WordSynonyms',
+    'Yoga',
+    'EOGVerticalSignal',
+    'FreezerSmallTrain',
+    'GunPointOldVersusYoung',
 ]
 
 RESULTS_DIR = '../../../results/'
 MODELS_DIR = '../../../models/classification/univariate/'
 
-NUMBER_OF_EXPERIMENTS = 1
+NUMBER_OF_EXPERIMENTS = 5
 NUMBER_OF_EPOCHS = 1000
 
 results_data_dir = {
@@ -61,9 +58,9 @@ results_data_dir = {
 }
 
 for dataset in DATASETS:
-
     print(f'Loading dataset {dataset}...')
     X_train, y_train, X_test, y_test = load_data(name=dataset, task='classification', split='full')
+    sequence_len = X_train.shape[-1]
     
     print('Converting the dataset to torch.DataLoader...')
     train_set, test_set = to_torch_dataset(X_train, y_train, X_test, y_test)
@@ -72,17 +69,17 @@ for dataset in DATASETS:
     num_classes = len(np.unique(y_train))
 
     for experiment_number in range(NUMBER_OF_EXPERIMENTS):
-        model = DeformableFCN(in_dim=1, num_classes=num_classes)
+        model = LITE(in_channels=1, num_classes=num_classes, sequence_length=sequence_len)
 
         checkpoint = ModelCheckpoint(
             monitor='train_loss',
             dirpath=f'{MODELS_DIR}',
-            filename=f'deffcn-{dataset}-{experiment_number}',
+            filename=f'fcn-{dataset}-{experiment_number}',
             save_top_k=1,
             auto_insert_metric_name=False
         )
-        
-        logger = CSVLogger('../../../logs/classification', name=f'deformable_fcn_ucr_subset_{dataset}')
+
+        logger = CSVLogger('../../../logs/classification', name=f'lite_ucr_subset_{dataset}')
 
         trainer = Trainer(
             max_epochs=NUMBER_OF_EPOCHS,
@@ -90,19 +87,15 @@ for dataset in DATASETS:
             callbacks=[checkpoint],
             logger=logger
         )
-        
+
         start_time = time.time()
-        trainer.fit(
-            model,
-            train_dataloaders=train_loader,
-            # val_dataloaders=test_loader,
-        )
+        trainer.fit(model, train_dataloaders=train_loader)
         end_time = time.time()
 
         results = trainer.test(dataloaders=test_loader, ckpt_path='best')
 
         results_data_dir['dataset'].append(dataset)
-        results_data_dir['model'].append('deffcn')
+        results_data_dir['model'].append('lite')
         results_data_dir['exp'].append(experiment_number)
         results_data_dir['acc'].append(results[0]['acc'])
         results_data_dir['f1'].append(results[0]['f1'])
@@ -111,4 +104,4 @@ for dataset in DATASETS:
         results_data_dir['time'].append(end_time - start_time)
 
         results_df = pd.DataFrame(results_data_dir)
-        results_df.to_csv(f'{RESULTS_DIR}deffcn.csv', index=False)
+        results_df.to_csv(f'{RESULTS_DIR}lite.csv', index=False)

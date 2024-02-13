@@ -100,11 +100,11 @@ class DeformableConvolution1d(nn.Module):
         self.weight = Parameter(
             torch.empty(out_channels, in_channels // groups, kernel_size)
         )
-        
+
         self.dilated_positions = torch.linspace(
             0, dilation * kernel_size - dilation, kernel_size
         )
-        
+
         if bias:
             self.bias = Parameter(torch.empty(out_channels))
         else:
@@ -280,21 +280,12 @@ class PackedDeformableConvolution1d(DeformableConvolution1d):
         self.device = device
         self.to(device)
 
-        # torch.nn.init.constant_(self.offset_dconv.weight, 0.)
-        # torch.nn.init.constant_(self.offset_pconv.weight, 0.)
+        torch.nn.init.constant_(self.offset_dconv.weight, 1.)
+        torch.nn.init.constant_(self.offset_pconv.weight, 1.)
 
-        # if bias:
-        #     torch.nn.init.constant_(self.offset_dconv.bias, 0.)
-        #     torch.nn.init.constant_(self.offset_pconv.bias, 0.)
-
-        self.offset_dconv.register_backward_hook(self._set_lr)
-        self.offset_pconv.register_backward_hook(self._set_lr)
-
-    @staticmethod
-    def _set_lr(module, grad_input: torch.Tensor, grad_output):
-        grad_input = (F.dropout(grad_input[i], p=0.2) * 0.1 for i in range(len(grad_input)))
-        grad_output = (F.dropout(grad_output[i],p=0.2) * 0.1 for i in range(len(grad_output)))
-        
+        if bias:
+            torch.nn.init.constant_(self.offset_dconv.bias, 0.)
+            torch.nn.init.constant_(self.offset_pconv.bias, 0.)        
     
     def forward(self, x: torch.Tensor, with_offsets: bool = False) -> torch.Tensor:
         offsets = self.offset_dconv(x)
