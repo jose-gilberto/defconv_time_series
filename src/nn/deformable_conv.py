@@ -285,7 +285,15 @@ class PackedDeformableConvolution1d(DeformableConvolution1d):
 
         if bias:
             torch.nn.init.constant_(self.offset_dconv.bias, 0.)
-            torch.nn.init.constant_(self.offset_pconv.bias, 0.)        
+            torch.nn.init.constant_(self.offset_pconv.bias, 0.)
+            
+        self.offset_dconv.register_backward_hook(self._set_lr)
+        self.offset_pconv.register_backward_hook(self._set_lr)
+
+    @staticmethod
+    def _set_lr(module, grad_input, grad_output):
+        grad_input = (grad_input[i] * 0.1 for i in range(len(grad_input)))
+        grad_output = (grad_output[i] * 0.1 for i in range(len(grad_output)))
     
     def forward(self, x: torch.Tensor, with_offsets: bool = False) -> torch.Tensor:
         offsets = self.offset_dconv(x)

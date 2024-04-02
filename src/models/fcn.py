@@ -17,21 +17,19 @@ class DeformableFCN(LightningModule):
         self.num_classes = num_classes
 
         self.conv_layers = nn.Sequential(*[
-            nn.Conv1d(in_channels=in_dim, out_channels=128, kernel_size=30, padding='same'),
+            nn.Conv1d(in_channels=in_dim, out_channels=128, kernel_size=8, padding='same'),
             nn.BatchNorm1d(num_features=128),
             nn.ReLU(),
 
-            nn.Conv1d(in_channels=128, out_channels=256, kernel_size=20, padding='same'),
+            nn.Conv1d(in_channels=128, out_channels=256, kernel_size=5, padding='same'),
             nn.BatchNorm1d(num_features=256),
             nn.ReLU(),
-        ])
 
-        self.defconv = PackedDeformableConvolution1d(
-            in_channels=256, out_channels=128, kernel_size=10, padding='same', stride=1,
-        )
-        
-        self.conv2 = nn.Sequential(*[
-            nn.Conv1d(in_channels=128, out_channels=128, kernel_size=10, padding='same'),
+            PackedDeformableConvolution1d(
+                in_channels=256, out_channels=128, kernel_size=5, padding='same', stride=1
+            ),
+
+            nn.Conv1d(in_channels=128, out_channels=128, kernel_size=3, padding='same'),
             nn.BatchNorm1d(num_features=128),
             nn.ReLU(),
         ])
@@ -41,12 +39,7 @@ class DeformableFCN(LightningModule):
         self.criteria = nn.CrossEntropyLoss() if num_classes > 2 else nn.BCEWithLogitsLoss()
 
     def configure_optimizers(self) -> any:
-        optimizer = torch.optim.Adam([
-            {'params': self.conv_layers.parameters(), 'lr': 1e-4},
-            {'params': self.defconv.parameters(), 'lr': 1e-6},
-            {'params': self.linear.parameters(), 'lr': 1e-4},
-            {'params': self.conv2.parameters(), 'lr': 1e-4},
-        ], lr=1e-4)
+        optimizer = torch.optim.Adam(self.parameters())
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, mode='min', factor=0.5, patience=50, min_lr=1e-4
         )
@@ -58,8 +51,6 @@ class DeformableFCN(LightningModule):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.conv_layers(x)
-        x = self.defconv(x)
-        x = self.conv2(x)
         x = torch.mean(x, dim=-1)
         x = self.linear(x)
         return x
@@ -148,6 +139,7 @@ class DeformableFCN(LightningModule):
         self.log('recall', recall)
 
         return
+
 
 
 class FCN(LightningModule):
