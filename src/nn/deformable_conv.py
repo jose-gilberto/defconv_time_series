@@ -192,8 +192,14 @@ class DeformableConvolution1d(nn.Module):
                 dilated_positions=self.dilated_positions,
                 device=self.device
             )
-            
+        
+        mask = torch.sigmoid(mask)
+        mask = mask.contiguous().permute((0, 2, 1)).unsqueeze(dim=1)
+        mask = torch.cat([mask for _ in range(x.size(1))], dim=1)
+        
+        x *= mask
         x = x.flatten(-2, -1)
+
         output = F.conv1d(
             x,
             weight=self.weight,
@@ -223,7 +229,7 @@ class PackedDeformableConvolution1d(DeformableConvolution1d):
                  padding: Union[int, Literal['valid', 'same']] = 'valid',
                  dilation: int = 1,
                  groups: int = 1,
-                 bias: bool = False,
+                 bias: bool = True,
                  padding_mode: str = 'reflect',
                  offset_groups: int = 1,
                  device: str = 'cpu',
@@ -259,11 +265,8 @@ class PackedDeformableConvolution1d(DeformableConvolution1d):
             padding_mode=padding_mode,
             bias=bias
         )
-        # self.offset_dconv_norm = GlobalLayerNormalization(
-        #     in_channels
-        # )
+
         self.offset_dconv_prelu = nn.PReLU()
-        
         
         self.offset_pconv = nn.Conv1d(
             in_channels=in_channels,
@@ -272,6 +275,7 @@ class PackedDeformableConvolution1d(DeformableConvolution1d):
             stride=1,
             bias=bias
         )
+
         # self.offset_pconv_norm = GlobalLayerNormalization(
         #     kernel_size * offset_groups
         # )
@@ -280,15 +284,28 @@ class PackedDeformableConvolution1d(DeformableConvolution1d):
         self.device = device
         self.to(device)
 
-        torch.nn.init.constant_(self.offset_dconv.weight, 1.)
-        torch.nn.init.constant_(self.offset_pconv.weight, 1.)
+        torch.nn.init.constant_(self.offset_dconv.weight, 0.)
+        torch.nn.init.constant_(self.offset_pconv.weight, 0.)
 
         if bias:
-            torch.nn.init.constant_(self.offset_dconv.bias, 0.)
-            torch.nn.init.constant_(self.offset_pconv.bias, 0.)
+            torch.nn.init.constant_(self.offset_dconv.bias, 1.)
+            torch.nn.init.constant_(self.offset_pconv.bias, 1.)
             
         self.offset_dconv.register_backward_hook(self._set_lr)
         self.offset_pconv.register_backward_hook(self._set_lr)
+        
+        self.modulation_conv = nn.Conv1d(
+            in_channels=in_channels,
+            out_channels=kernel_size,
+            kernel_size=kernel_size,
+            stride=1,
+            padding=padding,
+            padding_mode=padding_mode,
+            bias=False
+        )
+        torch.nn.init.constant_(self.modulation_conv.weight, 0.5)
+        
+        self.modulation_conv.register_backward_hook(self._set_lr)
 
     @staticmethod
     def _set_lr(module, grad_input, grad_output):
@@ -299,7 +316,8 @@ class PackedDeformableConvolution1d(DeformableConvolution1d):
         offsets = self.offset_dconv(x)
         offsets = self.offset_dconv_prelu(offsets)
         # offsets = self.offset_dconv_norm(offsets.moveaxis(1,2)).moveaxis(2,1)
-
+        
+        m = self.modulation_conv(x)
 
         self.device = x.device
 
@@ -314,6 +332,6 @@ class PackedDeformableConvolution1d(DeformableConvolution1d):
         offsets = torch.vstack(offsets).moveaxis((0, 2), (1, 3))
 
         if with_offsets:
-            return super().forward(x, offsets), offsets
+            return super().forward(x, offsets, mask=m), offsets
         else:
-            return super().forward(x, offsets)
+            return super().forward(x, offsets, mask=m)

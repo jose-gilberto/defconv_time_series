@@ -39,9 +39,9 @@ class DeformableFCN(LightningModule):
         self.criteria = nn.CrossEntropyLoss() if num_classes > 2 else nn.BCEWithLogitsLoss()
 
     def configure_optimizers(self) -> any:
-        optimizer = torch.optim.Adam(self.parameters())
+        optimizer = torch.optim.Adam(self.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-8)
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode='min', factor=0.5, patience=50, min_lr=1e-4
+            optimizer, mode='min', factor=0.5, patience=50, min_lr=0.0001
         )
         return {
             'optimizer': optimizer,
@@ -54,7 +54,7 @@ class DeformableFCN(LightningModule):
         x = torch.mean(x, dim=-1)
         x = self.linear(x)
         return x
-        
+
     def training_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> torch.Tensor:
         x, y = batch
         preds = self(x)
