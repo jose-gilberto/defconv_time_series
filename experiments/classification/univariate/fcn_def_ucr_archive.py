@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/home/gbarbosa/Projects/defconvts')
+sys.path.append('/home/gilberto/projects/defconv_time_series')
 
 from src.models import DeformableFCN
 from src.utils import load_data, to_torch_dataset, to_torch_loader
@@ -8,6 +8,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 from lightning.pytorch import seed_everything
+from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch import Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.loggers import CSVLogger
@@ -19,34 +20,128 @@ import time
 # Ensure reproducibility
 seed_everything(42, workers=True)
 
+# Variables
+EXPERIMENT_DATE = time.strftime("%Y%m%d")
+
 DATASETS = [
-    # 'ArrowHead',
-    # 'BeetleFly',
-    # 'Car',
-    # 'Earthquakes',
-    # 'FaceAll',
-    # 'FordB',
-    'Ham',
-    # 'InlineSkate',
-    # 'InsectWingbeatSound',
-    # 'Lightning7',
-    # 'MoteStrain',
-    # 'NonInvasiveFetalECGThorax2',
-    # 'OliveOil',
-    # 'ProximalPhalanxTW',
-    # 'TwoPatterns',
-    # 'Wine',
-    # 'WordSynonyms',
-    # 'Yoga',
-    # 'EOGVerticalSignal',
-    # 'FreezerSmallTrain',
-    # 'GunPointOldVersusYoung',
+    # "ACSF1",
+    # "Adiac",
+    # "ArrowHead",
+    # "Beef",
+    # "BeetleFly",
+    # "BirdChicken",
+    # "BME",
+    # "Car",
+    # "CBF",
+    # "Chinatown",
+    # "ChlorineConcentration",
+    # "CinCECGTorso",
+    # "Coffee",
+    # "Computers",
+    # "CricketX",
+    # "CricketY",
+    # "CricketZ",
+    "Crop",
+    "DiatomSizeReduction",
+    "DistalPhalanxOutlineCorrect",
+    "DistalPhalanxOutlineAgeGroup",
+    "DistalPhalanxTW",
+    "Earthquakes",
+    "ECG200",
+    "ECG5000",
+    "ECGFiveDays",
+    "ElectricDevices",
+    "EOGHorizontalSignal",
+    "EOGVerticalSignal",
+    "EthanolLevel",
+    "FaceAll",
+    "FaceFour",
+    "FacesUCR",
+    "FiftyWords",
+    "Fish",
+    "FordA",
+    "FordB",
+    "FreezerRegularTrain",
+    "FreezerSmallTrain",
+    "GunPoint",
+    "GunPointAgeSpan",
+    "GunPointMaleVersusFemale",
+    "GunPointOldVersusYoung",
+    "Ham",
+    "HandOutlines",
+    "Haptics",
+    "Herring",
+    "HouseTwenty",
+    "InlineSkate",
+    "InsectEPGRegularTrain",
+    "InsectEPGSmallTrain",
+    "InsectWingbeatSound",
+    "ItalyPowerDemand",
+    "LargeKitchenAppliances",
+    "Lightning2",
+    "Lightning7",
+    "Mallat",
+    "Meat",
+    "MedicalImages",
+    "MiddlePhalanxOutlineCorrect",
+    "MiddlePhalanxOutlineAgeGroup",
+    "MiddlePhalanxTW",
+    "MixedShapesRegularTrain",
+    "MixedShapesSmallTrain",
+    "MoteStrain",
+    "NonInvasiveFetalECGThorax1",
+    "NonInvasiveFetalECGThorax2",
+    "OliveOil",
+    "OSULeaf",
+    "PhalangesOutlinesCorrect",
+    "Phoneme",
+    "PigAirwayPressure",
+    "PigArtPressure",
+    "PigCVP",
+    "Plane",
+    "PowerCons",
+    "ProximalPhalanxOutlineCorrect",
+    "ProximalPhalanxOutlineAgeGroup",
+    "ProximalPhalanxTW",
+    "RefrigerationDevices",
+    "Rock",
+    "ScreenType",
+    "SemgHandGenderCh2",
+    "SemgHandMovementCh2",
+    "SemgHandSubjectCh2",
+    "ShapeletSim",
+    "ShapesAll",
+    "SmallKitchenAppliances",
+    "SmoothSubspace",
+    "SonyAIBORobotSurface1",
+    "SonyAIBORobotSurface2",
+    "StarLightCurves",
+    "Strawberry",
+    "SwedishLeaf",
+    "Symbols",
+    "SyntheticControl",
+    "ToeSegmentation1",
+    "ToeSegmentation2",
+    "Trace",
+    "TwoLeadECG",
+    "TwoPatterns",
+    "UMD",
+    "UWaveGestureLibraryAll",
+    "UWaveGestureLibraryX",
+    "UWaveGestureLibraryY",
+    "UWaveGestureLibraryZ",
+    "Wafer",
+    "Wine",
+    "WordSynonyms",
+    "Worms",
+    "WormsTwoClass",
+    "Yoga",
 ]
 
 RESULTS_DIR = '../../../results/'
 MODELS_DIR = '../../../models/classification/univariate/'
 
-NUMBER_OF_EXPERIMENTS = 1
+NUMBER_OF_EXPERIMENTS = 5
 NUMBER_OF_EPOCHS = 1000
 
 results_data_dir = {
@@ -81,7 +176,7 @@ for dataset in DATASETS:
             save_top_k=1,
             auto_insert_metric_name=False
         )
-        
+                
         logger = CSVLogger('../../../logs/classification', name=f'deformable_fcn_ucr_subset_{dataset}')
 
         trainer = Trainer(
@@ -111,4 +206,4 @@ for dataset in DATASETS:
         results_data_dir['time'].append(end_time - start_time)
 
         results_df = pd.DataFrame(results_data_dir)
-        results_df.to_csv(f'{RESULTS_DIR}deffcn.csv', index=False)
+        results_df.to_csv(f'{RESULTS_DIR}deffcn_{EXPERIMENT_DATE}.csv', index=False)

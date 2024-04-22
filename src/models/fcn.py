@@ -26,10 +26,10 @@ class DeformableFCN(LightningModule):
             nn.ReLU(),
 
             PackedDeformableConvolution1d(
-                in_channels=256, out_channels=128, kernel_size=5, padding='same', stride=1
+                in_channels=256, out_channels=256, kernel_size=5, padding='same', stride=1
             ),
 
-            nn.Conv1d(in_channels=128, out_channels=128, kernel_size=3, padding='same'),
+            nn.Conv1d(in_channels=256, out_channels=128, kernel_size=3, padding='same'),
             nn.BatchNorm1d(num_features=128),
             nn.ReLU(),
         ])

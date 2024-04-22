@@ -17,7 +17,7 @@ class ParallelConvolutions(nn.Module):
         self.medium_convolution = nn.Conv1d(in_channels=in_channels, out_channels=out_channels, bias=False, padding='same', stride=1, kernel_size=20)
 
         self.batch_normalization = nn.BatchNorm1d(num_features=out_channels * 2)
-        self.activation = nn.PReLU()
+        self.activation = nn.LeakyReLU()
         
     def forward(self, x):
         x = torch.cat([self.large_convolution(x), self.medium_convolution(x)], dim=1)
@@ -33,22 +33,37 @@ class DefConvNet(LightningModule):
         self.num_classes = num_classes
 
         self.conv_layers = nn.Sequential(*[
-            ParallelConvolutions(in_channels=1, out_channels=32),
-            PackedDeformableConvolution1d(
-                in_channels=32*2, out_channels=128, kernel_size=20, padding='same', stride=1
-            ),
-            nn.Conv1d(in_channels=128, out_channels=128, kernel_size=10, padding='same'),
+            nn.Conv1d(in_channels=1, out_channels=128, kernel_size=8, padding='same'),
             nn.BatchNorm1d(num_features=128),
-            nn.PReLU(),
+            nn.ReLU(),
+
+            nn.Conv1d(in_channels=64*2, out_channels=256, kernel_size=5, padding='same'),
+            nn.BatchNorm1d(num_features=256),
+            nn.ReLU(),
+            
+            PackedDeformableConvolution1d(
+                in_channels=256, out_channels=512, kernel_size=3, padding='same', stride=1, bias=True
+            ),
+            
+            nn.Conv1d(in_channels=512, out_channels=256, kernel_size=3, padding='same'),
+            nn.BatchNorm1d(num_features=256),
+            nn.ReLU(),
         ])
 
-        self.linear = nn.Linear(in_features=128, out_features=1 if num_classes == 2 else num_classes)
+        self.linear = nn.Linear(in_features=256, out_features=1 if num_classes == 2 else num_classes)
 
         self.criteria = nn.CrossEntropyLoss() if num_classes > 2 else nn.BCEWithLogitsLoss()
 
     def configure_optimizers(self) -> any:
-        optimizer = torch.optim.Adam(self.parameters(), lr=0.005)
-        return optimizer
+        optimizer = torch.optim.Adam(self.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-8)
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode='min', factor=0.5, patience=50, min_lr=0.0001
+        )
+        return {
+            'optimizer': optimizer,
+            'lr_scheduler': scheduler,
+            'monitor': 'train_loss'
+        }
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.conv_layers(x)

@@ -27,9 +27,9 @@ def load_data(
             for i in range(len(y_train)):
                 y_train[i] = np.where(classes == y_train[i])[0][0]
         
-            std_ = X_train.std(axis=-1, keepdims=True)
-            std_[std_ == 0] = 1.0
-            X_train = (X_train - X_train.mean(axis=-1, keepdims=True)) / std_
+            # std_ = X_train.std(axis=-1, keepdims=True)
+            # std_[std_ == 0] = 1.0
+            # X_train = (X_train - X_train.mean(axis=-1, keepdims=True)) / std_
 
             datasets.append(X_train)
             datasets.append(y_train.astype(int))
@@ -43,9 +43,9 @@ def load_data(
             for i in range(len(y_test)):
                 y_test[i] = np.where(classes == y_test[i])[0][0]
                 
-            std_ = X_test.std(axis=-1, keepdims=True)
-            std_[std_ == 0] = 1.0
-            X_test = (X_test - X_test.mean(axis=-1, keepdims=True)) / std_
+            # std_ = X_test.std(axis=-1, keepdims=True)
+            # std_[std_ == 0] = 1.0
+            # X_test = (X_test - X_test.mean(axis=-1, keepdims=True)) / std_
             
             datasets.append(X_test)
             datasets.append(y_test.astype(int))
