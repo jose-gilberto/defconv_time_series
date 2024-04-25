@@ -17,11 +17,13 @@ import pandas as pd
 # Ensure reproducibility
 seed_everything(42, workers=True)
 
+EXPERIMENT_DATE = time.strftime("%Y%m%d")
+
 DATASETS = [
     # "ACSF1",
     # "Adiac",
-    "ArrowHead",
-    # "Beef",
+    # "ArrowHead",
+    "Beef",
     # "BeetleFly",
     # "BirdChicken",
     # "BME",
@@ -155,7 +157,7 @@ for dataset in DATASETS:
 
     print('Converting the dataset to torch.DataLoader...')
     train_set, test_set = to_torch_dataset(X_train, y_train, X_test, y_test)
-    train_loader, test_loader = to_torch_loader(train_dataset=train_set, test_dataset=test_set)
+    train_loader, test_loader = to_torch_loader(train_dataset=train_set, test_dataset=test_set, batch_size=int(min(16, X_train.shape[0] / 10)))
 
     num_classes = len(np.unique(y_train))
 
@@ -195,4 +197,4 @@ for dataset in DATASETS:
         results_data_dir['time'].append(end_time - start_time)
 
         results_df = pd.DataFrame(results_data_dir)
-        results_df.to_csv(f'{RESULTS_DIR}fcn_test.csv', index=False)
+        results_df.to_csv(f'{RESULTS_DIR}fcn_{EXPERIMENT_DATE}.csv', index=False)

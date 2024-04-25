@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/home/gbarbosa/Projects/defconvts')
+sys.path.append('/home/gilberto/projects/defconv_time_series')
 import warnings
 warnings.filterwarnings('ignore')
 from src.models import LITE
@@ -17,34 +17,14 @@ import pandas as pd
 seed_everything(42, workers=True)
 
 DATASETS = [
-    'ArrowHead',
-    'BeetleFly',
-    'Car',
-    'Earthquakes',
-    'FaceAll',
-    'FordB',
-    'Ham',
-    'InlineSkate',
-    'InsectWingbeatSound',
-    'Lightning7',
-    'MoteStrain',
-    'NonInvasiveFetalECGThorax2',
-    'OliveOil',
-    'ProximalPhalanxTW',
-    'TwoPatterns',
-    'Wine',
-    'WordSynonyms',
-    'Yoga',
-    'EOGVerticalSignal',
-    'FreezerSmallTrain',
-    'GunPointOldVersusYoung',
+    'EOGHorizontalSignal'
 ]
 
 RESULTS_DIR = '../../../results/'
 MODELS_DIR = '../../../models/classification/univariate/'
 
 NUMBER_OF_EXPERIMENTS = 5
-NUMBER_OF_EPOCHS = 1000
+NUMBER_OF_EPOCHS = 1500
 
 results_data_dir = {
     'model': [],
@@ -64,7 +44,7 @@ for dataset in DATASETS:
     
     print('Converting the dataset to torch.DataLoader...')
     train_set, test_set = to_torch_dataset(X_train, y_train, X_test, y_test)
-    train_loader, test_loader = to_torch_loader(train_dataset=train_set, test_dataset=test_set)
+    train_loader, test_loader = to_torch_loader(train_dataset=train_set, test_dataset=test_set, batch_size=64)
 
     num_classes = len(np.unique(y_train))
 
