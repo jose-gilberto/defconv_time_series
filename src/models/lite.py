@@ -157,7 +157,7 @@ class LITE(LightningModule):
         
         # Go over the separable convolution
         for separable_conv in self.separable_convolutions:
-            feature_maps = separable_conv(feature_maps)    
+            feature_maps = separable_conv(feature_maps) 
             feature_maps = self.separable_batchnorm(feature_maps)
             feature_maps = self.separable_activation(feature_maps)
             
