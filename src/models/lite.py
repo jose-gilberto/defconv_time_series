@@ -21,7 +21,7 @@ class DepthwiseSeparableConvolution1d(nn.Module):
         super().__init__()
         self.depthwise = nn.Conv1d(in_channels=in_channels, out_channels=in_channels,
                                    kernel_size=kernel_size, padding='same', bias=False,
-                                   dilation=dilation, stride=stride)
+                                   dilation=dilation, stride=stride, groups=in_channels)
         self.pointwise = nn.Conv1d(in_channels=in_channels, out_channels=out_channels,
                                    kernel_size=1, padding='same', bias=False,
                                    dilation=dilation, stride=stride)
@@ -31,13 +31,15 @@ class DepthwiseSeparableConvolution1d(nn.Module):
 
 
 class LITE(LightningModule):
+
     def __init__(self, in_channels: int, num_classes: int, sequence_length: int, hidden_channels: int = 32) -> None:
         super().__init__()
-        
+
         self.in_channels = in_channels
         self.num_classes = num_classes
-        self.sequence_len = sequence_length
-        
+        self.sequence_length = sequence_length
+        self.hidden_channels = hidden_channels
+
         custom_kernels_sizes = [2, 4, 8, 16, 32, 64]
         custom_convolutions = []
         
@@ -50,10 +52,11 @@ class LITE(LightningModule):
             custom_conv = nn.Conv1d(in_channels=self.in_channels, out_channels=1,
                                     kernel_size=ks, bias=False, padding='same')
             custom_conv.weight = nn.Parameter(torch.from_numpy(filter_).float())
+            
             for param in custom_conv.parameters():
                 param.requires_grad = False
             custom_convolutions.append(custom_conv)
-            
+
         for ks in custom_kernels_sizes:
             filter_ = np.ones(shape=(1, self.in_channels, ks))
             indices_ = np.arange(ks)
@@ -62,11 +65,12 @@ class LITE(LightningModule):
             
             custom_conv = nn.Conv1d(in_channels=self.in_channels, out_channels=1,
                                     kernel_size=ks, bias=False, padding='same')
+            
             custom_conv.weight = nn.Parameter(torch.from_numpy(filter_).float())
             for param in custom_conv.parameters():
                 param.requires_grad = False
             custom_convolutions.append(custom_conv)
-            
+
         for ks in custom_kernels_sizes[1:]:
             filter_ = np.zeros(shape=(1, self.in_channels, ks + ks // 2))
             x_mesh = np.linspace(start=0, stop=1, num=ks//4 + 1)[1:].reshape((-1, 1, 1))
@@ -100,7 +104,7 @@ class LITE(LightningModule):
         # Kernel size
         inception_kernel_sizes = [40 // (2 ** i) for i in range(n_convs)]
         inception_convolutions = []
-        
+
         for i in range(len(inception_kernel_sizes)):
             inception_convolutions.append(
                 nn.Conv1d(
@@ -108,9 +112,9 @@ class LITE(LightningModule):
                     stride=1, padding='same', dilation=1, bias=False
                 )
             )
-            
+
         self.inception_convolutions = nn.ModuleList(inception_convolutions)
-        self.inception_batchnorm = nn.BatchNorm1d(num_features=113)
+        self.inception_batchnorm = nn.BatchNorm1d(num_features=96)
         self.inception_activation = nn.ReLU()
 
         separable_convolutions = []
@@ -146,15 +150,12 @@ class LITE(LightningModule):
         custom_feature_maps = torch.concat(custom_feature_maps, dim=1) # Concatenate channel-wise
         custom_feature_maps = self.custom_activation(custom_feature_maps)
 
-        feature_maps.append(custom_feature_maps)
         feature_maps = torch.concat(feature_maps, dim=1) # Concatenate channel-wise again
         feature_maps = self.inception_batchnorm(feature_maps)
         feature_maps = self.inception_activation(feature_maps)
 
-        # feature_maps = torch.transpose(feature_maps, 1, 2)
-        # feature_maps = self.deformable_conv(feature_maps)
-        # feature_maps = torch.transpose(feature_maps, 1, 2)
-        
+        feature_maps = torch.concat([custom_feature_maps, feature_maps], dim=1)
+
         # Go over the separable convolution
         for separable_conv in self.separable_convolutions:
             feature_maps = separable_conv(feature_maps) 
@@ -175,7 +176,7 @@ class LITE(LightningModule):
             'lr_scheduler': scheduler,
             'monitor': 'train_loss'
         }
-        
+
     def training_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> torch.Tensor:
         x, y = batch
         preds = self(x)
@@ -206,6 +207,35 @@ class LITE(LightningModule):
 
         return loss
     
+    def validation_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
+        x, y = batch
+        preds = self(x)
+
+        if self.num_classes == 2:
+            preds = preds.squeeze(dim=-1)
+            y_pred = F.sigmoid(preds).round()
+
+            y_pred = y_pred.cpu().detach().numpy()
+            y_true = y.cpu().detach().numpy()
+        else:
+            y_pred = torch.argmax(preds, dim=1).cpu().detach().numpy()
+            y_true = y.cpu().detach().numpy()
+
+        loss = self.criteria(preds, y.float().to(self.device) if self.num_classes == 2 else y)
+
+        self.log('val_loss', loss, prog_bar=True, on_epoch=True, on_step=False)            
+
+        acc = accuracy_score(y_true, y_pred)
+        f1 = f1_score(y_true, y_pred, average='macro')
+        precision = precision_score(y_true, y_pred, average='macro')
+        recall = recall_score(y_true, y_pred, average='macro')
+
+        self.log('val_acc', acc, on_epoch=True, on_step=False, prog_bar=True)
+        self.log('val_f1', f1, on_epoch=True, on_step=False)
+        self.log('val_precision', precision, on_epoch=True, on_step=False)
+        self.log('val_recall', recall, on_epoch=True, on_step=False)
+        return
+
     def test_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> torch.Tensor:
         x, y = batch
         preds = self(x)
@@ -231,3 +261,4 @@ class LITE(LightningModule):
         self.log('recall', recall)
 
         return
+
