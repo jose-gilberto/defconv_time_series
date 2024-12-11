@@ -32,13 +32,34 @@ class DepthwiseSeparableConvolution1d(nn.Module):
 
 class LITE(LightningModule):
 
-    def __init__(self, in_channels: int, num_classes: int, sequence_length: int, hidden_channels: int = 32) -> None:
+    def __init__(
+        self,
+        sequence_length: int,
+        num_classes: int,
+        in_channels: int,
+        hidden_channels: int = 32,
+    ) -> None:
+        """ Create an instance of a LITE [1] model.
+
+        Based on the implementation from https://github.com/MSD-IRIMAS/LITE/blob/main/classifiers/lite.py
+
+        Args:
+            sequence_length (int): length of the time series
+            num_classes (int): number of classes for the problem
+            in_channels (int): number of channels (if the series is univariate than in_channels = 1)
+            hidden_channels (int, optional): number of hidden channels to use in inception convolutions. Defaults to 32.
+
+        References:
+            [1]
+        """
         super().__init__()
 
         self.in_channels = in_channels
         self.num_classes = num_classes
         self.sequence_length = sequence_length
         self.hidden_channels = hidden_channels
+
+        # Build model
 
         custom_kernels_sizes = [2, 4, 8, 16, 32, 64]
         custom_convolutions = []
@@ -96,6 +117,8 @@ class LITE(LightningModule):
             custom_convolutions.append(custom_conv)
 
         self.custom_convolutions = nn.ModuleList(custom_convolutions)
+        self.custom_convolutions.eval()
+
         self.custom_activation = nn.ReLU()
 
         n_convs = 3
@@ -137,7 +160,6 @@ class LITE(LightningModule):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         feature_maps = []
-
         for inception_conv in self.inception_convolutions:
             x_ = inception_conv(x)
             feature_maps.append(x_)
@@ -163,11 +185,10 @@ class LITE(LightningModule):
             feature_maps = self.separable_activation(feature_maps)
             
         feature_maps = torch.mean(feature_maps, dim=-1)
-
         return self.linear(feature_maps)
     
     def configure_optimizers(self) -> any:
-        optimizer = torch.optim.Adam(self.parameters())
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-1)
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, mode='min', factor=0.5, patience=50, min_lr=1e-4
         )
@@ -205,6 +226,9 @@ class LITE(LightningModule):
         self.log('train_precision', precision, on_epoch=True, on_step=False)
         self.log('train_recall', recall, on_epoch=True, on_step=False)
 
+        # self.train_accs.append(acc)
+        # self.train_losses.append(loss.item())
+
         return loss
     
     def validation_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
@@ -234,6 +258,10 @@ class LITE(LightningModule):
         self.log('val_f1', f1, on_epoch=True, on_step=False)
         self.log('val_precision', precision, on_epoch=True, on_step=False)
         self.log('val_recall', recall, on_epoch=True, on_step=False)
+
+        # self.validation_accs.append(acc)
+        # self.validation_losses.append(loss.item())
+
         return
 
     def test_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> torch.Tensor:

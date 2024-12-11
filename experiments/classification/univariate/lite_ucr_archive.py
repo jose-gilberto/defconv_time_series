@@ -14,9 +14,11 @@ import time
 import pandas as pd
 from torch.nn import functional as F
 from sklearn.metrics import accuracy_score
+import matplotlib.pyplot as plt
+from torch import nn
 
 # Ensure reproducibility
-seed_everything(81, workers=True)
+# seed_everything(81, workers=True)
 
 DATASETS = [
     # "ACSF1",
@@ -104,16 +106,7 @@ DATASETS = [
     # "SemgHandGenderCh2",
     # "SemgHandMovementCh2",
     # "SemgHandSubjectCh2",
-    # "ShapeletSim",
-    # "ShapesAll",
-    # "SmallKitchenAppliances",
-    # "SmoothSubspace",
-    # "SonyAIBORobotSurface1",
-    # "SonyAIBORobotSurface2",
-    # "StarLightCurves",
-    # "Strawberry",
-    # "SwedishLeaf",
-    # "Symbols",
+    # "Shapelettrain_acc",
     # "SyntheticControl",
     # "ToeSegmentation1",
     # "ToeSegmentation2",
@@ -157,12 +150,14 @@ for dataset in DATASETS:
     
     print('Converting the dataset to torch.DataLoader...')
     train_set, test_set = to_torch_dataset(X_train, y_train, X_test, y_test)
-    train_loader, test_loader = to_torch_loader(train_dataset=train_set, test_dataset=test_set, batch_size=100)
+    train_loader, test_loader = to_torch_loader(train_dataset=train_set, test_dataset=test_set, batch_size=16)
 
     num_classes = len(np.unique(y_train))
 
     for experiment_number in range(NUMBER_OF_EXPERIMENTS):
+        # model = LITE(in_channels=1, num_classes=num_classes, sequence_length=sequence_len)
         model = LITE(in_channels=1, num_classes=num_classes, sequence_length=sequence_len)
+
 
         checkpoint = ModelCheckpoint(
             monitor='train_loss',
@@ -182,37 +177,43 @@ for dataset in DATASETS:
         )
 
         # start_time = time.time()
-        trainer.fit(model, train_dataloaders=train_loader)
-        # torch.save(model.state_dict(), './lite.pth')
-
-        # model.load_state_dict(torch.load('./lite.pth'), strict=True)
-
-        # trainer.test(model, train_loader)
-  
-        # model.eval()
-        # with torch.no_grad():
-        #     for x, y in train_loader:
-        #         x = x.to(model.device)
-        #         y = y.to(model.device)
-
-        #         preds = model(x)
-
-        #         if num_classes == 2:
-        #             preds = preds.squeeze(dim=-1)
-        #             y_pred = F.sigmoid(preds).round()
-
-        #             y_pred = y_pred.cpu().detach().numpy()
-        #             y_true = y.cpu().detach().numpy()
-        #         else:
-        #             y_pred = torch.argmax(preds, dim=1).cpu().detach().numpy()
-        #             y_true = y.cpu().detach().numpy()
-
-        #         acc = accuracy_score(y_true, y_pred)
-        #         print(acc)
-
+        # trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=test_loader)
         # end_time = time.time()
+        model.to(torch.device('cuda'))
+        model.train()
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+        criteria = nn.BCEWithLogitsLoss()
+        for epoch in range(100):
+            for x, y in train_loader:
+                x = x.to(model.device)
+                y = y.to(model.device)
 
-        results = trainer.test(model, dataloaders=train_loader)
+                preds = model(x)
+                
+                # if model.num_classes == 2:
+                #     preds = preds.squeeze(dim=-1)
+                #     y_pred = F.sigmoid(preds).round()
+
+                #     y_pred = y_pred.cpu().detach().numpy()
+                #     y_true = y.cpu().detach().numpy()
+                # else:
+                #     y_pred = torch.argmax(preds, dim=1).cpu().detach().numpy()
+                #     y_true = y.cpu().detach().numpy()
+
+                loss = criteria(preds.squeeze(dim=-1), y.float().to(model.device) if model.num_classes == 2 else y)
+                # acc = accuracy_score(y_true, y_pred)
+
+                print(f'Epoch {epoch} - Train Loss: {loss}')
+
+                optimizer.step()
+                loss.backward()
+
+
+        # results = trainer.test(model, dataloaders=train_loader)
+
+        # # plt.plot(list(range(NUMBER_OF_EPOCHS)), model.train_losses)
+        # # plt.plot(list(range(NUMBER_OF_EPOCHS + 1)), model.validation_losses)
+        # # plt.show()
 
         # results_data_dir['dataset'].append(dataset)
         # results_data_dir['model'].append('lite')

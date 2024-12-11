@@ -82,7 +82,7 @@ def to_torch_loader(
     train_dataset: Dataset,
     test_dataset: Dataset,
     batch_size: int = 16,
-    shuffle: bool = False,
+    shuffle: bool = True,
     drop_last: bool = False
 ) -> Tuple[DataLoader, DataLoader]:
 
