@@ -150,7 +150,7 @@ for dataset in DATASETS:
     
     print('Converting the dataset to torch.DataLoader...')
     train_set, test_set = to_torch_dataset(X_train, y_train, X_test, y_test)
-    train_loader, test_loader = to_torch_loader(train_dataset=train_set, test_dataset=test_set, batch_size=16)
+    train_loader, test_loader = to_torch_loader(train_dataset=train_set, test_dataset=test_set, batch_size=64)
 
     num_classes = len(np.unique(y_train))
 
@@ -176,38 +176,80 @@ for dataset in DATASETS:
             logger=logger
         )
 
+
+        torch.autograd.set_detect_anomaly(True)
         # start_time = time.time()
         # trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=test_loader)
         # end_time = time.time()
         model.to(torch.device('cuda'))
         model.train()
-        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-        criteria = nn.BCEWithLogitsLoss()
-        for epoch in range(100):
+
+        optimizer = torch.optim.Adam(model.parameters())
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode='min', factor=0.1, patience=10, min_lr=0
+        )
+
+        criteria = nn.CrossEntropyLoss()
+
+        lowest_loss = None
+
+        for epoch in range(1500):
+            loss_epoch = []
+            acc_epoch = []
+
             for x, y in train_loader:
                 x = x.to(model.device)
                 y = y.to(model.device)
 
                 preds = model(x)
                 
-                # if model.num_classes == 2:
-                #     preds = preds.squeeze(dim=-1)
-                #     y_pred = F.sigmoid(preds).round()
+                y_pred = torch.argmax(preds, dim=1).cpu().detach().numpy()
+                y_true = y.cpu().detach().numpy()
 
-                #     y_pred = y_pred.cpu().detach().numpy()
-                #     y_true = y.cpu().detach().numpy()
-                # else:
-                #     y_pred = torch.argmax(preds, dim=1).cpu().detach().numpy()
-                #     y_true = y.cpu().detach().numpy()
+                loss = criteria(preds.squeeze(dim=-1), y)
+                acc = accuracy_score(y_true, y_pred)
 
-                loss = criteria(preds.squeeze(dim=-1), y.float().to(model.device) if model.num_classes == 2 else y)
-                # acc = accuracy_score(y_true, y_pred)
+                loss_epoch.append(loss.item())
+                acc_epoch.append(acc)
 
-                print(f'Epoch {epoch} - Train Loss: {loss}')
+            loss_epoch, acc_epoch = np.array(loss_epoch), np.array(acc_epoch)
 
-                optimizer.step()
-                loss.backward()
+            # if lowest_loss is None or lowest_loss > loss_epoch.mean():
+            #     lowest_loss = loss_epoch.mean()
+            #     torch.save(model.state_dict(), 'lite.pth')
 
+            print(f'Epoch {epoch} - Train Loss: {loss_epoch.mean()} - Acc {acc_epoch.mean()}')
+
+            loss.backward()
+
+            optimizer.step()
+            scheduler.step(loss_epoch.mean())
+
+
+        # model.load_state_dict(torch.load('./lite.pth'))
+
+        test_ypred = []
+        test_ytrue = []
+
+        model.eval()
+        with torch.no_grad():
+            for x, y in train_loader:
+                x = x.to(model.device)
+                y = y.to(model.device)
+
+                preds = model(x)
+                
+                y_pred = torch.argmax(nn.functional.softmax(preds, dim=1), dim=1).cpu().detach().numpy()
+                y_true = y.cpu().detach().numpy()
+
+                print(preds)
+                print(y_pred)
+                print(y_true)
+
+                test_ypred.extend(y_pred)
+                test_ytrue.extend(y_true)
+
+            print(f'Accuracy on Test {accuracy_score(test_ypred, test_ytrue)}')
 
         # results = trainer.test(model, dataloaders=train_loader)
 

@@ -76,6 +76,7 @@ class LITE(LightningModule):
             
             for param in custom_conv.parameters():
                 param.requires_grad = False
+
             custom_convolutions.append(custom_conv)
 
         for ks in custom_kernels_sizes:
@@ -92,7 +93,7 @@ class LITE(LightningModule):
                 param.requires_grad = False
             custom_convolutions.append(custom_conv)
 
-        for ks in custom_kernels_sizes[1:]:
+        for ks in [6, 12, 24, 48, 96]:
             filter_ = np.zeros(shape=(1, self.in_channels, ks + ks // 2))
             x_mesh = np.linspace(start=0, stop=1, num=ks//4 + 1)[1:].reshape((-1, 1, 1))
             
@@ -112,12 +113,13 @@ class LITE(LightningModule):
             custom_conv = nn.Conv1d(in_channels=self.in_channels, out_channels=1,
                                     kernel_size=ks, bias=False, padding='same')
             custom_conv.weight = nn.Parameter(torch.from_numpy(filter_).float())
+
             for param in custom_conv.parameters():
                 param.requires_grad = False
+
             custom_convolutions.append(custom_conv)
 
         self.custom_convolutions = nn.ModuleList(custom_convolutions)
-        self.custom_convolutions.eval()
 
         self.custom_activation = nn.ReLU()
 
@@ -125,7 +127,7 @@ class LITE(LightningModule):
         # Hidden Channels
         n_filters = 32
         # Kernel size
-        inception_kernel_sizes = [40 // (2 ** i) for i in range(n_convs)]
+        inception_kernel_sizes = [40, 20, 10]
         inception_convolutions = []
 
         for i in range(len(inception_kernel_sizes)):
@@ -151,46 +153,51 @@ class LITE(LightningModule):
             )
             separable_convolutions.append(separable_conv)
 
-        self.separable_convolutions = nn.ModuleList(separable_convolutions)
+        self.separable_convolutions = nn.ModuleList(
+            separable_convolutions
+            # [
+            #     nn.Conv1d(in_channels=96, out_channels=32, kernel_size=10, dilation=2, padding='same', bias=False),
+            #     nn.Conv1d(in_channels=32, out_channels=32, kernel_size=5, dilation=4, padding='same', bias=False)
+            # ]
+        )
         self.separable_batchnorm = nn.BatchNorm1d(num_features=n_filters)
         self.separable_activation = nn.ReLU()
         
-        self.linear = nn.Linear(in_features=32, out_features=1 if num_classes == 2 else num_classes)
-        self.criteria = nn.CrossEntropyLoss() if num_classes > 2 else nn.BCEWithLogitsLoss()
+        # self.mlp = nn.Sequential(*[
+        #     nn.Flatten(),
+        #     nn.Linear(in_features=96 * sequence_length, out_features=500),
+        #     nn.Linear(in_features=500, out_features=500),
+        #     nn.Linear(in_features=500, out_features=num_classes),
+        # ])
+
+        self.linear = nn.Linear(in_features=32, out_features=num_classes)
+        self.criteria = nn.CrossEntropyLoss()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        feature_maps = []
-        for inception_conv in self.inception_convolutions:
-            x_ = inception_conv(x)
-            feature_maps.append(x_)
-
-        custom_feature_maps = []
-        for custom_conv in self.custom_convolutions:
-            x_ = custom_conv(x)
-            custom_feature_maps.append(x_)
-
-        custom_feature_maps = torch.concat(custom_feature_maps, dim=1) # Concatenate channel-wise
+        custom_feature_maps = torch.concat([custom_conv(x) for custom_conv in self.custom_convolutions], dim=1) # Concatenate channel-wise
         custom_feature_maps = self.custom_activation(custom_feature_maps)
 
-        feature_maps = torch.concat(feature_maps, dim=1) # Concatenate channel-wise again
+        feature_maps = torch.concat([inception_conv(x) for inception_conv in self.inception_convolutions], dim=1) # Concatenate channel-wise again
         feature_maps = self.inception_batchnorm(feature_maps)
         feature_maps = self.inception_activation(feature_maps)
 
-        feature_maps = torch.concat([custom_feature_maps, feature_maps], dim=1)
+        feature_maps = torch.concat([feature_maps, custom_feature_maps], dim=1)
 
         # Go over the separable convolution
         for separable_conv in self.separable_convolutions:
             feature_maps = separable_conv(feature_maps) 
+
             feature_maps = self.separable_batchnorm(feature_maps)
             feature_maps = self.separable_activation(feature_maps)
-            
+
         feature_maps = torch.mean(feature_maps, dim=-1)
+
         return self.linear(feature_maps)
     
     def configure_optimizers(self) -> any:
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-1)
+        optimizer = torch.optim.Adam(self.parameters())
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode='min', factor=0.5, patience=50, min_lr=1e-4
+            optimizer, mode='min', factor=0.1, patience=10, min_lr=0
         )
         return {
             'optimizer': optimizer,
@@ -212,7 +219,7 @@ class LITE(LightningModule):
             y_pred = torch.argmax(preds, dim=1).cpu().detach().numpy()
             y_true = y.cpu().detach().numpy()
 
-        loss = self.criteria(preds, y.float().to(self.device) if self.num_classes == 2 else y)
+        loss = self.criteria(preds, y)
 
         self.log('train_loss', loss, prog_bar=True, on_epoch=True, on_step=False)            
 
